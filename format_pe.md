@@ -314,11 +314,11 @@ Dans les grandes lignes,
 
 Les dessin ci-dessous (issus de https://tech-zealots.com/malware-analysis/journey-towards-import-address-table-of-an-executable-file/) résument parfaitement l'organisation de ces tables au repos :
 
-[Tables d'import - fichier](./Imports_on_Disk.png)
+![Tables d'import - fichier](./Imports_on_Disk.png)
 
 et à l'exécution :
 
-[Tables d'import - processus](./Imports_in_Memory.png)
+![Tables d'import - processus](./Imports_in_Memory.png)
 
 ## L'import Directory Table
 
@@ -390,31 +390,31 @@ Ici on regarde comment évolue l'ILT et l'IAT du programme kdnet.exe lors de son
 
 Le programme kdnet.exe contient un appel à la fonction `wcsncpy_s` à l'adresse `0x56cf` : 
 
-[Appel à wcsncpy_s](./iat1.png)
+![Appel à wcsncpy_s](./iat1.png)
 
 L'instruction `call cs:wcsnpy_s` a pour opcode `48 FF 15 2A BE 00 00`, c'est-à-dire `call qword [rip + 0xbe2a]` :
 
-[Décodage de l'opcode appelant wcsncpy_s](./iat3.png)
+![Décodage de l'opcode appelant wcsncpy_s](./iat3.png)
 
 On remarque que si l'on additionne l'adresse de la prochaine instruction à exécuter (`0x56d6`) 
 
-[Adresse de la prochaine instruction](./iat2.png)
+![Adresse de la prochaine instruction](./iat2.png)
 
 à l'offset contenu dans l'opcode décodé (`0xbe2a`) on trouve `0x11500`, qui est justement la RVA de l'IAT de la dll `msvcrt.dll` :
 
-[L'IAT de msvcrt.dll](./iat4.png)
+![L'IAT de msvcrt.dll](./iat4.png)
 
 La RVA de l'ILT est par ailleurs `0x1b700`.
 
 On lance `kdnet.exe` dans le débugger d'IDA. L'exécutable `kdnet.exe` est projeté à l'adresse `0x00007FF73A030000` : 
 
-[kdnet.exe en mémoire](./iat5.png)
+![kdnet.exe en mémoire](./iat5.png)
 
 L'ILT est donc à l'adresse `00007FF73A030000 + 0x1b700 = 0x7FF73A04B700`.
 
 À l'adresse `0x7FF73A04B700` on lit `0x01ba80` qui est l'`OrdinalOrHintNameRVA` de la fonction importée.
 
-(Première entrée de l'ILT de msvcrt.dll)[iat6.png]
+![Première entrée de l'ILT de msvcrt.dll](iat6.png)
 
 Comme le bit de poids faible est nul, c'est un import par nom, et l'entrée est la RVA du nom de la fonction importée.
 
@@ -424,21 +424,21 @@ La Virtual Address de ce nom est la somme de l'adresse de base du programme `kdn
 
 À cette adresse on lit la valeur `\x1a\x05wcsnpy_s` : 
 
-(Nom de la première fonction importée de msvcrt.dll)[iat7.png]
+![Nom de la première fonction importée de msvcrt.dll](iat7.png)
 
 On retrouve bien la valeur `0x51a` pour l'hint de la fonction `wcsnpy_s` :
 
-[hint de wcsnpy_s](iat8.png)
+![hint de wcsnpy_s](iat8.png)
 
 La RVA de l'IAT est `0x11500`, donc à l'exécution sa VA est `0x00007FF73A030000 + 0x11500 = 0x7FF73A041500`.
 
 À cette VA on lit l'`OrdinalOrHintNameRVA` `0x7FFD84E830A0` : 
 
-[Contenu à la VA de l'IAT](iat9.png)
+![Contenu à la VA de l'IAT](iat9.png)
 
 Et cette adresse est justement celle du point d'entrée de `wcsnpy_s` !
 
-[Adresse en mémoire de wcsnpy_s](iat10.png)
+![Adresse en mémoire de wcsnpy_s](iat10.png)
 
 ## Récapitulatif de l'heuristique d'import
 
